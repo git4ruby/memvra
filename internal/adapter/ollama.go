@@ -107,6 +107,9 @@ type ollamaChatChunk struct {
 func (o *ollamaAdapter) Complete(ctx context.Context, req CompletionRequest) (<-chan StreamChunk, error) {
 	model := req.Model
 	if model == "" {
+		model = o.embedModel
+	}
+	if model == "" {
 		model = "llama3.2"
 	}
 

@@ -123,7 +123,7 @@ Examples:
 			}
 
 			// Call the LLM.
-			llm, err := adapter.New(providerName, "", apiKey(gcfg, providerName), gcfg.Ollama.Host)
+			llm, err := adapter.New(providerName, gcfg.Ollama.CompletionModel, apiKey(gcfg, providerName), gcfg.Ollama.Host)
 			if err != nil {
 				return fmt.Errorf("init LLM adapter: %w", err)
 			}
