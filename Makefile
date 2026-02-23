@@ -9,7 +9,7 @@ LDFLAGS     = -s -w \
               -X main.commit=$(COMMIT) \
               -X main.date=$(DATE)
 
-.PHONY: all build install test lint clean release tidy
+.PHONY: all build install test lint fmt vet clean release snapshot tidy
 
 all: build
 
@@ -29,6 +29,14 @@ test:
 ## lint: Run golangci-lint.
 lint:
 	golangci-lint run ./...
+
+## fmt: Format all Go source files.
+fmt:
+	gofmt -w -s .
+
+## vet: Run go vet.
+vet:
+	go vet ./...
 
 ## tidy: Tidy go.mod and go.sum.
 tidy:

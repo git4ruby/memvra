@@ -69,4 +69,4 @@ brews:
     install: |
       bin.install "memvra"
     test: |
-      system "#{bin}/memvra", "--version"
+      system "#{bin}/memvra", "version"
