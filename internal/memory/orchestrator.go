@@ -128,9 +128,11 @@ func (o *Orchestrator) Remember(ctx context.Context, content string, memType Mem
 	m.ID = id
 
 	// Generate and store embedding (best-effort — non-fatal on failure).
-	vecs, err := o.embedder.Embed(ctx, []string{content})
-	if err == nil && len(vecs) > 0 {
-		_ = o.vectors.UpsertMemoryEmbedding(id, vecs[0])
+	if o.embedder != nil {
+		vecs, err := o.embedder.Embed(ctx, []string{content})
+		if err == nil && len(vecs) > 0 {
+			_ = o.vectors.UpsertMemoryEmbedding(id, vecs[0])
+		}
 	}
 
 	return m, nil

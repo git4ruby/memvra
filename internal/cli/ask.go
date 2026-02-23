@@ -22,6 +22,7 @@ func newAskCmd() *cobra.Command {
 		noMemory    bool
 		contextOnly bool
 		verbose     bool
+		extract     bool
 		maxTokens   int
 		temperature float64
 	)
@@ -149,13 +150,37 @@ Examples:
 				return fmt.Errorf("LLM request: %w", err)
 			}
 
+			var responseBuf strings.Builder
 			for chunk := range stream {
 				if chunk.Error != nil {
 					return fmt.Errorf("stream error: %w", chunk.Error)
 				}
 				fmt.Print(chunk.Text)
+				responseBuf.WriteString(chunk.Text)
 			}
 			fmt.Println()
+
+			// Auto-extract memories from the response if enabled.
+			doExtract := gcfg.Extraction.Enabled || extract
+			if doExtract {
+				extracted, err := memory.ExtractMemories(context.Background(), llm, responseBuf.String(), gcfg.Extraction.MaxExtracts)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "warn: memory extraction failed: %v\n", err)
+				} else {
+					for _, m := range extracted {
+						saved, saveErr := orchestrator.Remember(context.Background(), m.Content, m.MemoryType, "extracted")
+						if saveErr != nil {
+							continue
+						}
+						if verbose {
+							fmt.Fprintf(os.Stderr, "  extracted (%s): %s\n", saved.MemoryType, truncateLabel(saved.Content, 60))
+						}
+					}
+					if len(extracted) > 0 && !verbose {
+						fmt.Fprintf(os.Stderr, "  %d memor%s extracted and stored.\n", len(extracted), pluralY(len(extracted)))
+					}
+				}
+			}
 
 			return nil
 		},
@@ -166,10 +191,28 @@ Examples:
 	cmd.Flags().BoolVar(&noMemory, "no-memory", false, "skip memory retrieval, use raw question only")
 	cmd.Flags().BoolVar(&contextOnly, "context-only", false, "print injected context without calling LLM")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "show which memories and chunks were included in context")
+	cmd.Flags().BoolVarP(&extract, "extract", "e", false, "auto-extract decisions and constraints from the response")
 	cmd.Flags().IntVar(&maxTokens, "max-tokens", 4096, "maximum response tokens")
 	cmd.Flags().Float64Var(&temperature, "temperature", 0.7, "sampling temperature")
 
 	return cmd
+}
+
+// truncateLabel truncates s to max runes for display purposes.
+func truncateLabel(s string, max int) string {
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max]) + "..."
+}
+
+// pluralY returns "y" for n==1, "ies" otherwise (for "memory"/"memories").
+func pluralY(n int) string {
+	if n == 1 {
+		return "y"
+	}
+	return "ies"
 }
 
 // apiKey returns the correct API key from the global config for the given provider.

@@ -12,12 +12,19 @@ import (
 
 // GlobalConfig holds user-wide settings.
 type GlobalConfig struct {
-	DefaultModel    string        `toml:"default_model"`
-	DefaultEmbedder string        `toml:"default_embedder"`
-	Keys            KeysConfig    `toml:"keys"`
-	Ollama          OllamaConfig  `toml:"ollama"`
-	Context         ContextConfig `toml:"context"`
-	Output          OutputConfig  `toml:"output"`
+	DefaultModel    string           `toml:"default_model"`
+	DefaultEmbedder string           `toml:"default_embedder"`
+	Keys            KeysConfig       `toml:"keys"`
+	Ollama          OllamaConfig     `toml:"ollama"`
+	Context         ContextConfig    `toml:"context"`
+	Output          OutputConfig     `toml:"output"`
+	Extraction      ExtractionConfig `toml:"extraction"`
+}
+
+// ExtractionConfig controls auto-extraction of memories from LLM responses.
+type ExtractionConfig struct {
+	Enabled     bool `toml:"enabled"`
+	MaxExtracts int  `toml:"max_extracts"`
 }
 
 type KeysConfig struct {
@@ -79,6 +86,10 @@ func DefaultGlobal() GlobalConfig {
 		Output: OutputConfig{
 			Stream: true,
 			Color:  true,
+		},
+		Extraction: ExtractionConfig{
+			Enabled:     false,
+			MaxExtracts: 3,
 		},
 	}
 }
