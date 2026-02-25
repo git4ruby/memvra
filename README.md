@@ -4,6 +4,8 @@
 
 Memvra is a developer CLI tool that gives AI coding assistants a persistent memory of your project. It solves the core problem that AI agents (Claude, GPT, Gemini, etc.) are stateless across sessions — forcing developers to repeatedly re-explain architecture, conventions, constraints, and past decisions every time they start a new conversation.
 
+**Switch between AI tools seamlessly.** Working with Claude and hit your token limit? Open a new terminal, start Gemini or Cursor, type "continue" — and it knows exactly where you left off. Memvra auto-exports your project context to every format so any AI tool can pick it up immediately.
+
 Runs entirely on your machine. Works with any LLM. No accounts required.
 
 ## Features
@@ -13,7 +15,8 @@ Runs entirely on your machine. Works with any LLM. No accounts required.
 - **Retrieves** relevant context semantically using vector search
 - **Injects** an optimized prompt into every LLM call automatically
 - **Extracts** decisions and constraints from AI responses and stores them
-- **Exports** to `CLAUDE.md`, `.cursorrules`, markdown, or JSON
+- **Auto-exports** to `CLAUDE.md`, `.cursorrules`, `PROJECT_CONTEXT.md`, and `memvra-context.json` on every memory change
+- **Seamless model switching** — switch between Claude, Gemini, Cursor, or any AI tool mid-session without losing context
 - **Incremental updates** — re-indexes only changed files, prunes deleted ones
 - **Watch mode** — auto-reindexes on file changes in the background
 - **Git hook integration** — auto-updates the index after every commit
@@ -42,17 +45,82 @@ memvra setup
 # 2. Initialize in your project
 cd /path/to/your/project
 memvra init
+# → Scans your project, generates CLAUDE.md, .cursorrules, PROJECT_CONTEXT.md, memvra-context.json
 
 # 3. Ask a question — full project context is injected automatically
 memvra ask "How should I implement the document upload endpoint?"
 
-# 4. Store a decision manually
+# 4. Store a decision — all export files update automatically
 memvra remember "We use JWT auth, not Devise — API-only mode"
+# → auto-exported: CLAUDE.md, .cursorrules, PROJECT_CONTEXT.md, memvra-context.json
 
 # 5. Check what Memvra knows
 memvra status
 memvra context
 ```
+
+After `memvra init`, your project root will contain context files for every major AI tool:
+
+| File | Read by |
+|------|---------|
+| `CLAUDE.md` | Claude Code, Claude CLI |
+| `.cursorrules` | Cursor |
+| `PROJECT_CONTEXT.md` | Any markdown-aware tool, Windsurf, Copilot |
+| `memvra-context.json` | Custom integrations, scripts, APIs |
+
+These files are auto-generated and added to `.gitignore` automatically.
+
+## Seamless Model Switching
+
+Memvra's core promise: **no matter which AI tool you switch to next, the context is already there.**
+
+### The problem
+
+You're deep in a coding session with Claude Code. You hit your token limit, or your API quota runs out, or you just want a second opinion from Gemini. You open a new terminal — and the new AI has zero context about what you were working on.
+
+### How Memvra solves it
+
+Every time you store a memory (`memvra remember`), extract knowledge from a conversation (`memvra ask --extract`), or re-index your project (`memvra update`), Memvra automatically regenerates context files in **every format**:
+
+```
+your-project/
+├── CLAUDE.md              ← Claude Code reads this automatically
+├── .cursorrules           ← Cursor reads this automatically
+├── PROJECT_CONTEXT.md     ← Generic markdown for any tool
+├── memvra-context.json    ← Structured JSON for custom integrations
+└── .memvra/               ← Memvra's internal database
+```
+
+### Example workflow
+
+```bash
+# Morning: Working with Claude Code
+memvra ask -m claude "Design the auth middleware"
+memvra remember "Using JWT with RS256, tokens expire in 1h, refresh via /auth/refresh"
+# → CLAUDE.md, .cursorrules, PROJECT_CONTEXT.md, memvra-context.json all updated
+
+# Afternoon: Claude token limit reached — switch to Gemini
+# Just open a new terminal in the same project directory
+memvra ask -m gemini "Continue implementing the auth middleware"
+# → Gemini gets full context: project structure, tech stack, JWT decision, everything
+
+# Evening: Want to use Cursor IDE for the frontend
+# Just open the project in Cursor — it reads .cursorrules automatically
+# Cursor already knows your conventions, decisions, and architecture
+```
+
+### What each AI tool sees
+
+When any AI reads the auto-generated context, it sees:
+
+- **Project profile** — name, tech stack, language, framework
+- **Decisions** — "Use PostgreSQL for JSONB support", "JWT with RS256"
+- **Conventions** — "camelCase for API fields", "Service objects in app/services/"
+- **Constraints** — "Never expose API keys in client code"
+- **TODOs** — "Refactor auth module before v2 launch"
+- **Notes** — "API uses REST, rate limited to 100 req/min"
+
+The AI doesn't need to be told what happened in previous sessions — it already knows.
 
 ## Commands
 
@@ -64,6 +132,7 @@ memvra context
 | `memvra remember "<statement>"` | Store a decision, convention, constraint, or note |
 | `memvra forget` | Remove specific memories interactively or by ID/type |
 | `memvra context` | View the project context Memvra would inject |
+| `memvra diff` | Show file index, memory, and session changes since last update |
 | `memvra status` | Show project stats — files, memories, sessions, DB size |
 | `memvra update` | Re-index changed files, re-embed modified chunks, prune deleted files |
 | `memvra watch` | Watch for file changes and auto-reindex in the background |
@@ -119,6 +188,16 @@ memvra context
     --edit             Open .memvra/context.md in $EDITOR
 ```
 
+### `memvra diff` flags
+
+```
+    --files-only       Show only file index changes
+    --memories-only    Show only memory changes
+    --sessions-only    Show only session changes
+    --since string     Override time anchor (e.g. "24h", "7d", "2h30m")
+    --no-scan          Skip filesystem scan (show only memory/session changes)
+```
+
 ### `memvra update` flags
 
 ```
@@ -141,6 +220,8 @@ memvra context
 ```
 
 ### `memvra export` flags
+
+> **Note:** With auto-export enabled (default), you rarely need to run `memvra export` manually. Context files are regenerated automatically on every memory change. Use this command when you want to export to a custom path or filter by memory type.
 
 ```
     --format string    Output format: claude, cursor, markdown, json (default "markdown")
@@ -191,6 +272,24 @@ max_extracts = 3
 [summarization]
 enabled    = false  # Auto-summarize sessions after every ask
 max_tokens = 256    # Max tokens for the summary LLM call
+
+[auto_export]
+enabled = true                                       # Auto-regenerate context files on memory changes
+formats = ["claude", "cursor", "markdown", "json"]   # All formats by default
+```
+
+Auto-export triggers on: `memvra init`, `memvra remember`, `memvra ask --extract` (when memories are extracted), `memvra update`, `memvra watch` (via update), and git hooks (via update).
+
+To disable auto-export or limit formats:
+
+```toml
+[auto_export]
+enabled = false                   # Disable completely
+
+# Or export only specific formats:
+[auto_export]
+enabled = true
+formats = ["claude", "cursor"]    # Only CLAUDE.md and .cursorrules
 ```
 
 ### Project config — `.memvra/config.toml`
@@ -228,6 +327,49 @@ api   = "All API responses follow JSON:API specification"
 | Ollama | any local model | nomic-embed-text | Local (no key) |
 
 All four providers support streaming completions.
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      Your Project                       │
+│                                                         │
+│  Source files ──► Scanner ──► Chunker ──► Embedder      │
+│                      │           │           │          │
+│                      ▼           ▼           ▼          │
+│                ┌──────────────────────────────────┐     │
+│                │  .memvra/memvra.db (SQLite)      │     │
+│                │  ├── projects    (tech stack)     │     │
+│                │  ├── file_index  (content hashes) │     │
+│                │  ├── chunks     (code segments)   │     │
+│                │  ├── memories   (decisions, etc.) │     │
+│                │  ├── sessions   (conversation log)│     │
+│                │  └── vec_*      (vector embeddings│)    │
+│                └──────────────────────────────────┘     │
+│                      │                                  │
+│                      ▼                                  │
+│  ┌─────────────────────────────────────────┐           │
+│  │ Context Builder                          │           │
+│  │  1. Semantic search (vector similarity)  │           │
+│  │  2. Token-budget-aware assembly          │           │
+│  │  3. Priority: decisions > conventions >  │           │
+│  │     constraints > retrieved chunks       │           │
+│  └─────────────────────────────────────────┘           │
+│          │                        │                     │
+│          ▼                        ▼                     │
+│  LLM Provider               Auto-Export                 │
+│  (Claude/OpenAI/             ├── CLAUDE.md              │
+│   Gemini/Ollama)             ├── .cursorrules           │
+│                              ├── PROJECT_CONTEXT.md     │
+│                              └── memvra-context.json    │
+└─────────────────────────────────────────────────────────┘
+```
+
+1. **Scan** — `memvra init` walks your project, detects the tech stack (language, framework, build tools), and chunks source files into segments.
+2. **Embed** — Each chunk and memory is embedded into a 768-dimensional vector using your configured embedder (Ollama/OpenAI/Gemini).
+3. **Store** — Everything lives in a single SQLite database at `.memvra/memvra.db`, with vector search powered by `sqlite-vec`.
+4. **Retrieve** — When you ask a question, the context builder performs semantic similarity search to find the most relevant code chunks and memories, assembles them into an optimized prompt within your token budget, and sends it to the LLM.
+5. **Export** — After every memory change, Memvra regenerates context files in all formats so that any AI tool can read the project context natively.
 
 ## Development
 
