@@ -524,6 +524,58 @@ func TestStore_GetLastNSessions_Zero(t *testing.T) {
 	}
 }
 
+func TestStore_ListMemoriesSince(t *testing.T) {
+	_, store := setupTestDB(t)
+
+	store.InsertMemory(Memory{Content: "recent decision", MemoryType: TypeDecision, Importance: 0.8})
+
+	// Since 1 minute ago — should find the memory.
+	since := time.Now().Add(-1 * time.Minute)
+	memories, err := store.ListMemoriesSince(since)
+	if err != nil {
+		t.Fatalf("ListMemoriesSince: %v", err)
+	}
+	if len(memories) != 1 {
+		t.Errorf("expected 1 memory, got %d", len(memories))
+	}
+
+	// Since 1 hour in the future — should find nothing.
+	future := time.Now().Add(1 * time.Hour)
+	memories, err = store.ListMemoriesSince(future)
+	if err != nil {
+		t.Fatalf("ListMemoriesSince future: %v", err)
+	}
+	if len(memories) != 0 {
+		t.Errorf("expected 0 memories for future anchor, got %d", len(memories))
+	}
+}
+
+func TestStore_ListSessionsSince(t *testing.T) {
+	_, store := setupTestDB(t)
+
+	store.InsertSession(Session{
+		Question: "recent question", ContextUsed: "{}", ModelUsed: "claude",
+	})
+
+	since := time.Now().Add(-1 * time.Minute)
+	sessions, err := store.ListSessionsSince(since)
+	if err != nil {
+		t.Fatalf("ListSessionsSince: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Errorf("expected 1 session, got %d", len(sessions))
+	}
+
+	future := time.Now().Add(1 * time.Hour)
+	sessions, err = store.ListSessionsSince(future)
+	if err != nil {
+		t.Fatalf("ListSessionsSince future: %v", err)
+	}
+	if len(sessions) != 0 {
+		t.Errorf("expected 0 sessions for future anchor, got %d", len(sessions))
+	}
+}
+
 func TestStore_PruneSessionsKeepLatest_KeepAll(t *testing.T) {
 	_, store := setupTestDB(t)
 

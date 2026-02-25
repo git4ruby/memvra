@@ -365,6 +365,55 @@ func (s *Store) GetLastNSessions(n int) ([]Session, error) {
 	return out, rows.Err()
 }
 
+// ListMemoriesSince returns all memories created or updated since the given time.
+func (s *Store) ListMemoriesSince(since time.Time) ([]Memory, error) {
+	ts := since.UTC().Format("2006-01-02 15:04:05")
+	rows, err := s.db.Conn().Query(
+		`SELECT id, content, memory_type, importance, source, related_files, created_at, updated_at
+		 FROM memories
+		 WHERE created_at >= ? OR updated_at >= ?
+		 ORDER BY memory_type, created_at DESC`,
+		ts, ts,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("store: list memories since: %w", err)
+	}
+	defer rows.Close()
+	return scanMemories(rows)
+}
+
+// ListSessionsSince returns all sessions created since the given time.
+func (s *Store) ListSessionsSince(since time.Time) ([]Session, error) {
+	ts := since.UTC().Format("2006-01-02 15:04:05")
+	rows, err := s.db.Conn().Query(
+		`SELECT id, question, context_used, response_summary, model_used, tokens_used, created_at
+		 FROM sessions
+		 WHERE created_at >= ?
+		 ORDER BY created_at DESC`,
+		ts,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("store: list sessions since: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Session
+	for rows.Next() {
+		var sess Session
+		var createdAt string
+		if err := rows.Scan(
+			&sess.ID, &sess.Question, &sess.ContextUsed,
+			&sess.ResponseSummary, &sess.ModelUsed, &sess.TokensUsed,
+			&createdAt,
+		); err != nil {
+			return nil, err
+		}
+		sess.CreatedAt = parseTime(createdAt)
+		out = append(out, sess)
+	}
+	return out, rows.Err()
+}
+
 // ---- Helpers ----
 
 // parseTime tries multiple SQLite timestamp layouts.
