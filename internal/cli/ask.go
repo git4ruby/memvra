@@ -24,6 +24,7 @@ func newAskCmd() *cobra.Command {
 		contextOnly bool
 		verbose     bool
 		extract     bool
+		summarize   bool
 		maxTokens   int
 		temperature float64
 	)
@@ -105,6 +106,8 @@ Examples:
 				MaxTokens:           gcfg.Context.MaxTokens,
 				TopKChunks:          gcfg.Context.TopKChunks,
 				TopKMemories:        gcfg.Context.TopKMemories,
+				TopKSessions:        gcfg.Context.TopKSessions,
+				SessionTokenBudget:  gcfg.Context.SessionTokenBudget,
 				SimilarityThreshold: gcfg.Context.SimilarityThreshold,
 				ExtraFiles:          files,
 			})
@@ -167,14 +170,35 @@ Examples:
 			fmt.Println()
 
 			// Record the session (best-effort — non-fatal on failure).
+			var sessID string
 			if sourcesJSON, err := json.Marshal(builtCtx.Sources); err == nil {
-				_ = store.InsertSession(memory.Session{
+				sessID, _ = store.InsertSessionReturningID(memory.Session{
 					Question:        question,
 					ContextUsed:     string(sourcesJSON),
 					ResponseSummary: truncateLabel(responseBuf.String(), 300),
 					ModelUsed:       providerName,
 					TokensUsed:      builtCtx.TokensUsed,
 				})
+			}
+
+			// Auto-summarize session if enabled.
+			doSummarize := gcfg.Summarization.Enabled || summarize
+			if doSummarize && sessID != "" {
+				summary, err := memory.SummarizeSession(
+					context.Background(), llm,
+					question, responseBuf.String(),
+					gcfg.Summarization.MaxTokens,
+				)
+				if err != nil {
+					if verbose {
+						fmt.Fprintf(os.Stderr, "  warn: session summarization failed: %v\n", err)
+					}
+				} else if summary != "" {
+					_ = store.UpdateSessionSummary(sessID, summary)
+					if verbose {
+						fmt.Fprintf(os.Stderr, "  session summary stored (%d chars)\n", len(summary))
+					}
+				}
 			}
 
 			// Auto-extract memories from the response if enabled.
@@ -213,6 +237,7 @@ Examples:
 	cmd.Flags().BoolVar(&contextOnly, "context-only", false, "print injected context without calling LLM")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "show which memories and chunks were included in context")
 	cmd.Flags().BoolVarP(&extract, "extract", "e", false, "auto-extract decisions and constraints from the response")
+	cmd.Flags().BoolVarP(&summarize, "summarize", "s", false, "auto-summarize this session with an LLM call")
 	cmd.Flags().IntVar(&maxTokens, "max-tokens", 4096, "maximum response tokens")
 	cmd.Flags().Float64Var(&temperature, "temperature", 0.7, "sampling temperature")
 

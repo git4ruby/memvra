@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 func newContextCmd() *cobra.Command {
 	var section string
 	var export bool
+	var edit bool
 
 	cmd := &cobra.Command{
 		Use:   "context",
@@ -28,7 +30,8 @@ Sections: profile, decisions, conventions, constraints, notes, todos
 Examples:
   memvra context
   memvra context --section decisions
-  memvra context --export`,
+  memvra context --export
+  memvra context --edit`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root, err := findRoot()
 			if err != nil {
@@ -97,14 +100,11 @@ Examples:
 
 			for _, ts := range typeSections {
 				key := strings.ToLower(ts.label)
-				if section != "" && section != key && section != "profile" {
-					// Only filter when a non-profile section is requested.
-					if section != key {
-						continue
-					}
-				}
 				if section == "profile" {
-					continue
+					continue // profile-only mode — skip memory sections
+				}
+				if section != "" && section != key {
+					continue // a specific memory section was requested — skip non-matches
 				}
 
 				memories, err := store.ListMemories(ts.mt)
@@ -122,10 +122,20 @@ Examples:
 				fmt.Fprintln(out)
 			}
 
+			ctxPath := config.ProjectConfigDirPath(root) + "/context.md"
+
+			if edit {
+				// Ensure context.md exists before opening the editor.
+				if _, err := os.Stat(ctxPath); os.IsNotExist(err) {
+					if err := os.WriteFile(ctxPath, []byte(out.String()), 0o644); err != nil {
+						return fmt.Errorf("write context.md: %w", err)
+					}
+				}
+				return openInEditor(ctxPath)
+			}
+
 			fmt.Print(out.String())
 			if export {
-				// Write to context.md as well.
-				ctxPath := config.ProjectConfigDirPath(root) + "/context.md"
 				if err := os.WriteFile(ctxPath, []byte(out.String()), 0o644); err != nil {
 					fmt.Fprintf(os.Stderr, "Warning: could not write context.md: %v\n", err)
 				} else {
@@ -139,6 +149,24 @@ Examples:
 
 	cmd.Flags().StringVarP(&section, "section", "s", "", "Show only a specific section: profile, decisions, conventions, constraints, notes, todos")
 	cmd.Flags().BoolVar(&export, "export", false, "Also write context to .memvra/context.md")
+	cmd.Flags().BoolVar(&edit, "edit", false, "Open .memvra/context.md in $EDITOR")
 
 	return cmd
+}
+
+// openInEditor opens a file in the user's preferred editor.
+func openInEditor(path string) error {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = os.Getenv("VISUAL")
+	}
+	if editor == "" {
+		return fmt.Errorf("no $EDITOR or $VISUAL set; open %s manually", path)
+	}
+
+	c := exec.Command(editor, path)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c.Run()
 }

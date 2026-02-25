@@ -1,6 +1,11 @@
 package memory
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	"github.com/memvra/memvra/internal/adapter"
+)
 
 func TestParseExtractionJSON_ValidArray(t *testing.T) {
 	raw := `[{"content": "Use PostgreSQL", "type": "decision"}, {"content": "Always write tests", "type": "constraint"}]`
@@ -200,5 +205,37 @@ func TestDefaultImportance(t *testing.T) {
 	}
 	if defaultImportance(TypeNote) != 0.5 {
 		t.Error("note importance should be 0.5")
+	}
+}
+
+// stubLLM returns a fixed response for testing.
+type stubLLM struct{ response string }
+
+func (s *stubLLM) Complete(_ context.Context, _ adapter.CompletionRequest) (<-chan adapter.StreamChunk, error) {
+	ch := make(chan adapter.StreamChunk, 1)
+	ch <- adapter.StreamChunk{Text: s.response}
+	close(ch)
+	return ch, nil
+}
+func (s *stubLLM) Embed(_ context.Context, _ []string) ([][]float32, error) { return nil, nil }
+func (s *stubLLM) Info() adapter.ModelInfo                                   { return adapter.ModelInfo{} }
+
+func TestSummarizeSession_Success(t *testing.T) {
+	llm := &stubLLM{response: "The developer decided to use PostgreSQL for its JSONB support."}
+	summary, err := SummarizeSession(context.Background(), llm,
+		"Should we use PostgreSQL?", "Yes, use PostgreSQL for JSONB support.", 256)
+	if err != nil {
+		t.Fatalf("SummarizeSession: %v", err)
+	}
+	if summary == "" {
+		t.Error("expected non-empty summary")
+	}
+}
+
+func TestSummarizeSession_TrimsWhitespace(t *testing.T) {
+	llm := &stubLLM{response: "  summary with whitespace  "}
+	summary, _ := SummarizeSession(context.Background(), llm, "q", "a", 256)
+	if summary != "summary with whitespace" {
+		t.Errorf("expected trimmed summary, got %q", summary)
 	}
 }

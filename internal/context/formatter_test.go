@@ -3,6 +3,7 @@ package context
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/memvra/memvra/internal/memory"
 	"github.com/memvra/memvra/internal/scanner"
@@ -169,5 +170,34 @@ func TestTruncateStr(t *testing.T) {
 	}
 	if !strings.HasSuffix(truncated, "...") {
 		t.Error("should end with ...")
+	}
+}
+
+func TestFormatSessionHistory_WithSummary(t *testing.T) {
+	f := NewFormatter()
+	sessions := []memory.Session{
+		{
+			Question:        "How do I deploy?",
+			ResponseSummary: "Use docker compose up.",
+			CreatedAt:       time.Date(2026, 2, 24, 10, 0, 0, 0, time.UTC),
+		},
+	}
+	result := f.FormatSessionHistory(sessions)
+	if !strings.Contains(result, "## Recent Sessions") {
+		t.Error("missing heading")
+	}
+	if !strings.Contains(result, "How do I deploy?") {
+		t.Error("missing question")
+	}
+	if !strings.Contains(result, "Use docker compose up.") {
+		t.Error("missing summary")
+	}
+}
+
+func TestFormatSessionHistory_Empty(t *testing.T) {
+	f := NewFormatter()
+	result := f.FormatSessionHistory(nil)
+	if result != "" {
+		t.Errorf("expected empty string for no sessions, got %q", result)
 	}
 }

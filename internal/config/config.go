@@ -12,19 +12,26 @@ import (
 
 // GlobalConfig holds user-wide settings.
 type GlobalConfig struct {
-	DefaultModel    string           `toml:"default_model"`
-	DefaultEmbedder string           `toml:"default_embedder"`
-	Keys            KeysConfig       `toml:"keys"`
-	Ollama          OllamaConfig     `toml:"ollama"`
-	Context         ContextConfig    `toml:"context"`
-	Output          OutputConfig     `toml:"output"`
-	Extraction      ExtractionConfig `toml:"extraction"`
+	DefaultModel    string              `toml:"default_model"`
+	DefaultEmbedder string              `toml:"default_embedder"`
+	Keys            KeysConfig          `toml:"keys"`
+	Ollama          OllamaConfig        `toml:"ollama"`
+	Context         ContextConfig       `toml:"context"`
+	Output          OutputConfig        `toml:"output"`
+	Extraction      ExtractionConfig    `toml:"extraction"`
+	Summarization   SummarizationConfig `toml:"summarization"`
 }
 
 // ExtractionConfig controls auto-extraction of memories from LLM responses.
 type ExtractionConfig struct {
 	Enabled     bool `toml:"enabled"`
 	MaxExtracts int  `toml:"max_extracts"`
+}
+
+// SummarizationConfig controls auto-summarization of session responses.
+type SummarizationConfig struct {
+	Enabled   bool `toml:"enabled"`
+	MaxTokens int  `toml:"max_tokens"`
 }
 
 type KeysConfig struct {
@@ -45,6 +52,8 @@ type ContextConfig struct {
 	SimilarityThreshold float64 `toml:"similarity_threshold"`
 	TopKChunks         int     `toml:"top_k_chunks"`
 	TopKMemories       int     `toml:"top_k_memories"`
+	TopKSessions       int     `toml:"top_k_sessions"`
+	SessionTokenBudget int     `toml:"session_token_budget"`
 }
 
 type OutputConfig struct {
@@ -82,6 +91,8 @@ func DefaultGlobal() GlobalConfig {
 			SimilarityThreshold: 0.3,
 			TopKChunks:          10,
 			TopKMemories:        5,
+			TopKSessions:        1,
+			SessionTokenBudget:  500,
 		},
 		Output: OutputConfig{
 			Stream: true,
@@ -90,6 +101,10 @@ func DefaultGlobal() GlobalConfig {
 		Extraction: ExtractionConfig{
 			Enabled:     false,
 			MaxExtracts: 3,
+		},
+		Summarization: SummarizationConfig{
+			Enabled:   false,
+			MaxTokens: 256,
 		},
 	}
 }

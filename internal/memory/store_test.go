@@ -460,6 +460,70 @@ func TestStore_PruneSessions_OlderThanDays(t *testing.T) {
 	}
 }
 
+func TestStore_InsertSessionReturningID(t *testing.T) {
+	_, store := setupTestDB(t)
+
+	sess := Session{
+		Question:        "How do I deploy?",
+		ContextUsed:     "{}",
+		ResponseSummary: "Use docker.",
+		ModelUsed:       "claude",
+		TokensUsed:      100,
+	}
+	id, err := store.InsertSessionReturningID(sess)
+	if err != nil {
+		t.Fatalf("InsertSessionReturningID: %v", err)
+	}
+	if id == "" {
+		t.Error("expected non-empty session ID")
+	}
+}
+
+func TestStore_UpdateSessionSummary(t *testing.T) {
+	_, store := setupTestDB(t)
+
+	id, _ := store.InsertSessionReturningID(Session{
+		Question: "q", ContextUsed: "{}", ResponseSummary: "old", ModelUsed: "claude",
+	})
+	if err := store.UpdateSessionSummary(id, "new summary"); err != nil {
+		t.Fatalf("UpdateSessionSummary: %v", err)
+	}
+	sessions, _ := store.GetLastNSessions(1)
+	if sessions[0].ResponseSummary != "new summary" {
+		t.Errorf("expected updated summary, got %q", sessions[0].ResponseSummary)
+	}
+}
+
+func TestStore_GetLastNSessions(t *testing.T) {
+	_, store := setupTestDB(t)
+
+	for i := 0; i < 5; i++ {
+		store.InsertSession(Session{
+			Question: fmt.Sprintf("q%d", i), ContextUsed: "{}", ModelUsed: "claude",
+		})
+	}
+
+	sessions, err := store.GetLastNSessions(3)
+	if err != nil {
+		t.Fatalf("GetLastNSessions: %v", err)
+	}
+	if len(sessions) != 3 {
+		t.Errorf("expected 3 sessions, got %d", len(sessions))
+	}
+}
+
+func TestStore_GetLastNSessions_Zero(t *testing.T) {
+	_, store := setupTestDB(t)
+
+	sessions, err := store.GetLastNSessions(0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sessions != nil {
+		t.Errorf("expected nil for n=0, got %v", sessions)
+	}
+}
+
 func TestStore_PruneSessionsKeepLatest_KeepAll(t *testing.T) {
 	_, store := setupTestDB(t)
 

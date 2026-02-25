@@ -18,6 +18,8 @@ type BuildOptions struct {
 	MaxTokens           int
 	TopKChunks          int
 	TopKMemories        int
+	TopKSessions        int      // how many recent session summaries to inject (0 = skip)
+	SessionTokenBudget  int      // max tokens for session history block
 	SimilarityThreshold float64
 	ExtraFiles          []string // paths to always include
 }
@@ -29,6 +31,7 @@ type BuiltContext struct {
 	TokensUsed   int
 	ChunksUsed   int
 	MemoriesUsed int
+	SessionsUsed int
 	// Sources lists what was included, for --verbose output.
 	// Each entry is a short human-readable label.
 	Sources []string
@@ -75,6 +78,9 @@ func (b *Builder) Build(ctx context.Context, opts BuildOptions) (*BuiltContext, 
 	if opts.SimilarityThreshold == 0 {
 		opts.SimilarityThreshold = 0.3
 	}
+	if opts.SessionTokenBudget == 0 {
+		opts.SessionTokenBudget = 500
+	}
 
 	remaining := opts.MaxTokens
 	var contextSections []string
@@ -117,6 +123,26 @@ func (b *Builder) Build(ctx context.Context, opts BuildOptions) (*BuiltContext, 
 			contextSections = append(contextSections, block)
 			remaining -= tokens
 			sources = append(sources, fmt.Sprintf("file (explicit): %s", relPath))
+		}
+	}
+
+	// --- Step 3b: Recent session summaries (budget-gated) ---
+	sessionsUsed := 0
+	if opts.TopKSessions > 0 && remaining > 200 {
+		sessions, _ := b.store.GetLastNSessions(opts.TopKSessions)
+		if len(sessions) > 0 {
+			block := b.formatter.FormatSessionHistory(sessions)
+			tokens := b.tokenizer.Count(block)
+			allowed := opts.SessionTokenBudget
+			if allowed > remaining {
+				allowed = remaining
+			}
+			if tokens <= allowed {
+				contextSections = append(contextSections, block)
+				remaining -= tokens
+				sessionsUsed = len(sessions)
+				sources = append(sources, fmt.Sprintf("recent sessions: %d", len(sessions)))
+			}
 		}
 	}
 
@@ -199,6 +225,7 @@ func (b *Builder) Build(ctx context.Context, opts BuildOptions) (*BuiltContext, 
 		TokensUsed:   tokensUsed,
 		ChunksUsed:   chunksUsed,
 		MemoriesUsed: memoriesUsed,
+		SessionsUsed: sessionsUsed,
 		Sources:      sources,
 	}, nil
 }

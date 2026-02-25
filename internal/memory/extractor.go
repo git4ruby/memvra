@@ -109,6 +109,46 @@ func parseExtractionJSON(raw string, max int) ([]Memory, error) {
 	return out, nil
 }
 
+// SummarizeSession asks the LLM to produce a 2-3 sentence summary of a
+// question/answer exchange. Returns empty string on failure (non-fatal).
+func SummarizeSession(ctx context.Context, llm adapter.LLMAdapter, question, responseText string, maxTokens int) (string, error) {
+	if maxTokens <= 0 {
+		maxTokens = 256
+	}
+
+	trimmedQ := trimResponse(question, 500)
+	trimmedR := trimResponse(responseText, 3000)
+
+	prompt := fmt.Sprintf(`Summarize the following question and answer exchange in 2-3 concise sentences. Focus on what was decided or discovered. Return only the summary — no preamble, no labels, no markdown.
+
+--- QUESTION ---
+%s
+
+--- ANSWER ---
+%s
+--- END ---`, trimmedQ, trimmedR)
+
+	stream, err := llm.Complete(ctx, adapter.CompletionRequest{
+		UserMessage: prompt,
+		MaxTokens:   maxTokens,
+		Temperature: 0.1,
+		Stream:      false,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var sb strings.Builder
+	for chunk := range stream {
+		if chunk.Error != nil {
+			return "", chunk.Error
+		}
+		sb.WriteString(chunk.Text)
+	}
+
+	return strings.TrimSpace(sb.String()), nil
+}
+
 // trimResponse caps the response text at approximately maxChars characters,
 // trimming at a sentence boundary if possible.
 func trimResponse(s string, maxChars int) string {

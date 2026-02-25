@@ -282,6 +282,27 @@ func (s *Store) InsertSession(sess Session) error {
 	return err
 }
 
+// InsertSessionReturningID records a completed ask session and returns its generated ID.
+func (s *Store) InsertSessionReturningID(sess Session) (string, error) {
+	var id string
+	err := s.db.Conn().QueryRow(`
+		INSERT INTO sessions (id, question, context_used, response_summary, model_used, tokens_used)
+		VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?, ?)
+		RETURNING id`,
+		sess.Question, sess.ContextUsed, sess.ResponseSummary, sess.ModelUsed, sess.TokensUsed,
+	).Scan(&id)
+	return id, err
+}
+
+// UpdateSessionSummary replaces the response_summary for an existing session.
+func (s *Store) UpdateSessionSummary(id, summary string) error {
+	_, err := s.db.Conn().Exec(
+		`UPDATE sessions SET response_summary = ? WHERE id = ?`,
+		summary, id,
+	)
+	return err
+}
+
 // PruneSessions deletes sessions older than the given number of days.
 // Returns the number of deleted rows.
 func (s *Store) PruneSessions(olderThanDays int) (int, error) {
@@ -309,6 +330,39 @@ func (s *Store) PruneSessionsKeepLatest(keep int) (int, error) {
 	}
 	n, _ := res.RowsAffected()
 	return int(n), nil
+}
+
+// GetLastNSessions returns the N most recent sessions, ordered newest first.
+func (s *Store) GetLastNSessions(n int) ([]Session, error) {
+	if n <= 0 {
+		return nil, nil
+	}
+	rows, err := s.db.Conn().Query(`
+		SELECT id, question, context_used, response_summary, model_used, tokens_used, created_at
+		FROM sessions
+		ORDER BY created_at DESC
+		LIMIT ?`, n,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("store: get last n sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Session
+	for rows.Next() {
+		var sess Session
+		var createdAt string
+		if err := rows.Scan(
+			&sess.ID, &sess.Question, &sess.ContextUsed,
+			&sess.ResponseSummary, &sess.ModelUsed, &sess.TokensUsed,
+			&createdAt,
+		); err != nil {
+			return nil, err
+		}
+		sess.CreatedAt = parseTime(createdAt)
+		out = append(out, sess)
+	}
+	return out, rows.Err()
 }
 
 // ---- Helpers ----

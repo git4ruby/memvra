@@ -85,6 +85,27 @@ func (f *Formatter) FormatSystemPrompt(proj memory.Project, ts scanner.TechStack
 	return b.String()
 }
 
+// FormatSessionHistory renders recent sessions as a context block.
+// Sessions are assumed newest-first (as returned by GetLastNSessions);
+// they are reversed here to chronological order for natural reading.
+func (f *Formatter) FormatSessionHistory(sessions []memory.Session) string {
+	if len(sessions) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "## Recent Sessions\n\n")
+	for i := len(sessions) - 1; i >= 0; i-- {
+		s := sessions[i]
+		ts := s.CreatedAt.Format("2006-01-02 15:04")
+		fmt.Fprintf(&b, "**[%s]** %s\n", ts, s.Question)
+		if s.ResponseSummary != "" {
+			fmt.Fprintf(&b, "%s\n", s.ResponseSummary)
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
 func chunkLang(chunkType string) string {
 	switch chunkType {
 	case "config":
