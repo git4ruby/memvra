@@ -18,6 +18,9 @@ builds:
     goarch:
       - amd64
       - arm64
+    ignore:
+      - goos: linux
+        goarch: arm64
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
@@ -28,10 +31,6 @@ builds:
         goarch: amd64
         env:
           - CC=x86_64-linux-gnu-gcc
-      - goos: linux
-        goarch: arm64
-        env:
-          - CC=aarch64-linux-gnu-gcc
       - goos: darwin
         goarch: amd64
         env:
@@ -45,7 +44,8 @@ builds:
 
 archives:
   - id: memvra
-    format: tar.gz
+    formats:
+      - tar.gz
     name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
     files:
       - README.md
