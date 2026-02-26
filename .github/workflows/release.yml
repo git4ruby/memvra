@@ -22,6 +22,27 @@ jobs:
       - name: Fix git safe directory
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      - name: Create darwin compiler wrappers
+        run: |
+          cat > /usr/local/bin/darwin-amd64-cc <<'WRAP'
+          #!/bin/sh
+          exec o64-clang -Wno-unused-command-line-argument -Wno-error=unused-command-line-argument "$@"
+          WRAP
+          cat > /usr/local/bin/darwin-amd64-cxx <<'WRAP'
+          #!/bin/sh
+          exec o64-clang++ -Wno-unused-command-line-argument -Wno-error=unused-command-line-argument "$@"
+          WRAP
+          cat > /usr/local/bin/darwin-arm64-cc <<'WRAP'
+          #!/bin/sh
+          exec oa64-clang -Wno-unused-command-line-argument -Wno-error=unused-command-line-argument "$@"
+          WRAP
+          cat > /usr/local/bin/darwin-arm64-cxx <<'WRAP'
+          #!/bin/sh
+          exec oa64-clang++ -Wno-unused-command-line-argument -Wno-error=unused-command-line-argument "$@"
+          WRAP
+          chmod +x /usr/local/bin/darwin-amd64-cc /usr/local/bin/darwin-amd64-cxx
+          chmod +x /usr/local/bin/darwin-arm64-cc /usr/local/bin/darwin-arm64-cxx
+
       - name: Run GoReleaser
         run: goreleaser release --clean
         env:
