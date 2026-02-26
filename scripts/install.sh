@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: curl -fsSL https://get.memvra.dev | sh
+# Usage: curl -fsSL https://memvra.com/install.sh | sh
 set -euo pipefail
 
 REPO="memvra/memvra"

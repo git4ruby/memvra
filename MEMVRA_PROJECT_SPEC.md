@@ -686,7 +686,7 @@ brew tap memvra/tap
 brew install memvra
 
 # Linux (apt)
-curl -fsSL https://get.memvra.dev | sh
+curl -fsSL https://memvra.com/install.sh | sh
 
 # npm (for Node.js developers — wraps the Go binary)
 npm install -g memvra

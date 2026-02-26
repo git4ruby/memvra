@@ -32,7 +32,7 @@ brew tap memvra/tap
 brew install memvra
 
 # Linux / macOS (curl installer)
-curl -fsSL https://get.memvra.dev | sh
+curl -fsSL https://memvra.com/install.sh | sh
 
 # Go install (requires Go 1.22+ with CGO)
 go install github.com/memvra/memvra@latest
