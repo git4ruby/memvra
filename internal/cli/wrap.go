@@ -162,7 +162,7 @@ Examples:
 					}
 					orchestrator := memory.NewOrchestrator(store, vectors, ranker, embedder)
 					for _, m := range extracted {
-						orchestrator.Remember(context.Background(), m.Content, m.MemoryType, "extracted")
+						_, _ = orchestrator.Remember(context.Background(), m.Content, m.MemoryType, "extracted")
 					}
 					fmt.Fprintf(os.Stderr, "[memvra wrap] %d memor%s extracted\n",
 						len(extracted), pluralY(len(extracted)))
@@ -212,7 +212,7 @@ func runInPTY(toolName string, toolArgs []string, capture *bytes.Buffer, context
 	if err != nil {
 		return fmt.Errorf("raw mode: %w", err)
 	}
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }()
 
 	// stdin → child (with optional context injection)
 	go func() {
