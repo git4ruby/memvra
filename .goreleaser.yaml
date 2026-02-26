@@ -36,11 +36,15 @@ builds:
         env:
           - CC=o64-clang
           - CXX=o64-clang++
+          - CGO_CFLAGS=-Wno-unused-command-line-argument
+          - CGO_LDFLAGS=-Wno-unused-command-line-argument
       - goos: darwin
         goarch: arm64
         env:
           - CC=oa64-clang
           - CXX=oa64-clang++
+          - CGO_CFLAGS=-Wno-unused-command-line-argument
+          - CGO_LDFLAGS=-Wno-unused-command-line-argument
 
 archives:
   - id: memvra
