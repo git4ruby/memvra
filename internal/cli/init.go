@@ -187,7 +187,7 @@ and set up the .memvra/ directory with a SQLite database and config.`,
 			ensureGitignore(root)
 
 			// Auto-export context files for all AI tools.
-			autoExport(root, store)
+			AutoExport(root, store)
 
 			fmt.Println()
 			fmt.Println("Memvra initialized. Project context saved to .memvra/")

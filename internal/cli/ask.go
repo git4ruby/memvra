@@ -224,7 +224,7 @@ Examples:
 					if !verbose {
 						fmt.Fprintf(os.Stderr, "  %d memor%s extracted and stored.\n", len(extracted), pluralY(len(extracted)))
 					}
-					autoExport(root, store)
+					AutoExport(root, store)
 				}
 			}
 

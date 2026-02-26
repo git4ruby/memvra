@@ -8,6 +8,7 @@ import (
 
 	"github.com/memvra/memvra/internal/config"
 	"github.com/memvra/memvra/internal/db"
+	"github.com/memvra/memvra/internal/export"
 	"github.com/memvra/memvra/internal/memory"
 )
 
@@ -24,9 +25,9 @@ func TestFormatToFilename(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.format, func(t *testing.T) {
-			got := formatToFilename(tt.format)
+			got := export.FormatToFilename(tt.format)
 			if got != tt.want {
-				t.Errorf("formatToFilename(%q) = %q, want %q", tt.format, got, tt.want)
+				t.Errorf("FormatToFilename(%q) = %q, want %q", tt.format, got, tt.want)
 			}
 		})
 	}
@@ -92,7 +93,7 @@ func TestAutoExport_WritesAllFiles(t *testing.T) {
 		Source:     "user",
 	})
 
-	autoExport(root, store)
+	AutoExport(root, store)
 
 	// All 4 files should exist.
 	files := map[string]string{
@@ -117,7 +118,7 @@ func TestAutoExport_WritesAllFiles(t *testing.T) {
 func TestAutoExport_IncludesProjectName(t *testing.T) {
 	root, store := setupAutoExportTestDB(t)
 
-	autoExport(root, store)
+	AutoExport(root, store)
 
 	// CLAUDE.md should include project name.
 	content, err := os.ReadFile(filepath.Join(root, "CLAUDE.md"))
@@ -130,7 +131,7 @@ func TestAutoExport_IncludesProjectName(t *testing.T) {
 }
 
 func TestAutoExport_NoProject(t *testing.T) {
-	// autoExport should not panic when the store has no project.
+	// AutoExport should not panic when the store has no project.
 	emptyRoot := t.TempDir()
 	dbDir := filepath.Join(emptyRoot, ".memvra")
 	os.MkdirAll(dbDir, 0o755)
@@ -144,7 +145,7 @@ func TestAutoExport_NoProject(t *testing.T) {
 	store := memory.NewStore(database)
 
 	// Should not panic — just bail silently because GetProject fails.
-	autoExport(emptyRoot, store)
+	AutoExport(emptyRoot, store)
 
 	// No CLAUDE.md should be written.
 	if _, err := os.Stat(filepath.Join(emptyRoot, "CLAUDE.md")); err == nil {
@@ -161,7 +162,7 @@ func TestAutoExport_MultipleMemoryTypes(t *testing.T) {
 	store.InsertMemory(memory.Memory{Content: "refactor auth", MemoryType: memory.TypeTodo, Importance: 0.6})
 	store.InsertMemory(memory.Memory{Content: "API uses REST", MemoryType: memory.TypeNote, Importance: 0.5})
 
-	autoExport(root, store)
+	AutoExport(root, store)
 
 	// CLAUDE.md should contain all memory types.
 	content, err := os.ReadFile(filepath.Join(root, "CLAUDE.md"))
@@ -176,16 +177,47 @@ func TestAutoExport_MultipleMemoryTypes(t *testing.T) {
 	}
 }
 
+func TestAutoExport_IncludesSessions(t *testing.T) {
+	root, store := setupAutoExportTestDB(t)
+
+	// Insert a session.
+	store.InsertSession(memory.Session{
+		Question:        "How should I implement auth?",
+		ResponseSummary: "Use JWT with middleware pattern",
+		ModelUsed:       "claude",
+	})
+
+	AutoExport(root, store)
+
+	content, err := os.ReadFile(filepath.Join(root, "CLAUDE.md"))
+	if err != nil {
+		t.Fatalf("expected CLAUDE.md: %v", err)
+	}
+	text := string(content)
+	if !strings.Contains(text, "Recent Activity") {
+		t.Error("CLAUDE.md should contain Recent Activity section")
+	}
+	if !strings.Contains(text, "implement auth") {
+		t.Error("CLAUDE.md should contain session question")
+	}
+	if !strings.Contains(text, "JWT") {
+		t.Error("CLAUDE.md should contain session summary")
+	}
+	if !strings.Contains(text, "claude") {
+		t.Error("CLAUDE.md should contain model name")
+	}
+}
+
 func TestAutoExport_UpdatesOnRerun(t *testing.T) {
 	root, store := setupAutoExportTestDB(t)
 
 	// First export with one memory.
 	store.InsertMemory(memory.Memory{Content: "use PostgreSQL", MemoryType: memory.TypeDecision, Importance: 0.8})
-	autoExport(root, store)
+	AutoExport(root, store)
 
 	// Add another memory and re-export.
 	store.InsertMemory(memory.Memory{Content: "switched to Redis", MemoryType: memory.TypeDecision, Importance: 0.8})
-	autoExport(root, store)
+	AutoExport(root, store)
 
 	// Both should be in the file.
 	content, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md"))

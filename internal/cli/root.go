@@ -54,6 +54,7 @@ func init() {
 		newHookCmd(),
 		newSetupCmd(),
 		newPruneCmd(),
+		newMCPCmd(),
 		newVersionCmd(),
 	)
 }

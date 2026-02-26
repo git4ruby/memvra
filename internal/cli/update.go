@@ -112,7 +112,7 @@ Use --quiet to suppress output (useful for git hooks).`,
 
 			// Re-embed changed/added chunks.
 			if len(changedFileIDs) == 0 {
-				autoExport(root, store)
+				AutoExport(root, store)
 				return nil
 			}
 			embedder := buildEmbedder(gcfg)
@@ -136,7 +136,7 @@ Use --quiet to suppress output (useful for git hooks).`,
 				fmt.Printf("%d chunks re-embedded\n", embeddedCount)
 			}
 
-			autoExport(root, store)
+			AutoExport(root, store)
 			return nil
 		},
 	}

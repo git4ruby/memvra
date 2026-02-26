@@ -88,7 +88,7 @@ Examples:
 			fmt.Printf("  %q\n", statement)
 			fmt.Printf("  id: %s\n", id)
 
-			autoExport(root, store)
+			AutoExport(root, store)
 			return nil
 		},
 	}
