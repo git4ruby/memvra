@@ -172,7 +172,7 @@ func SaveGlobal(cfg GlobalConfig) error {
 	if err != nil {
 		return fmt.Errorf("config: create global config: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	return toml.NewEncoder(f).Encode(cfg)
 }
@@ -238,7 +238,7 @@ func SaveProject(root string, cfg ProjectConfig) error {
 	if err != nil {
 		return fmt.Errorf("config: create project config: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	return toml.NewEncoder(f).Encode(cfg)
 }

@@ -56,7 +56,7 @@ func (s *Server) Run() error {
 // Close releases the database connection.
 func (s *Server) Close() {
 	if s.database != nil {
-		s.database.Close()
+		_ = s.database.Close()
 	}
 }
 

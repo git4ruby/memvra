@@ -49,7 +49,7 @@ func Open(path string) (*DB, error) {
 	conn.SetMaxOpenConns(1)
 
 	if err := applyMigrations(conn); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("apply migrations: %w", err)
 	}
 

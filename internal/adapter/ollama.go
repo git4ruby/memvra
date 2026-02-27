@@ -71,7 +71,7 @@ func (o *ollamaAdapter) Embed(ctx context.Context, texts []string) ([][]float32,
 	if err != nil {
 		return nil, fmt.Errorf("ollama embed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("ollama embed: unexpected status %d", resp.StatusCode)
@@ -155,7 +155,7 @@ func (o *ollamaAdapter) Complete(ctx context.Context, req CompletionRequest) (<-
 			ch <- StreamChunk{Error: fmt.Errorf("ollama complete: %w", err)}
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			ch <- StreamChunk{Error: fmt.Errorf("ollama complete: status %d", resp.StatusCode)}

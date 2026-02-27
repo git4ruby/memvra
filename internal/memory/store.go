@@ -129,7 +129,7 @@ func (s *Store) ListAllChunks() ([]Chunk, error) {
 	if err != nil {
 		return nil, fmt.Errorf("store: list all chunks: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var chunks []Chunk
 	for rows.Next() {

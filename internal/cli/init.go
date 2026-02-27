@@ -79,7 +79,7 @@ and set up the .memvra/ directory with a SQLite database and config.`,
 			if err != nil {
 				return fmt.Errorf("open database: %w", err)
 			}
-			defer database.Close()
+			defer func() { _ = database.Close() }()
 
 			store := memory.NewStore(database)
 
