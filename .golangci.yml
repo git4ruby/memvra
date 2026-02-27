@@ -5,15 +5,10 @@ linters:
     - errcheck
     - govet
     - staticcheck
-
-formatters:
-  enable:
-    - gofmt
-
-issues:
-  exclude-dirs:
-    - vendor
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+    paths:
+      - vendor
