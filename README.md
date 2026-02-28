@@ -454,6 +454,10 @@ make snapshot  # Build all platforms locally via GoReleaser (no publish)
 make release   # Full release via GoReleaser (requires GITHUB_TOKEN)
 ```
 
+## Author
+
+Created by [Mohit Chandana](https://github.com/git4ruby)
+
 ## License
 
 MIT — see [LICENSE](LICENSE)
