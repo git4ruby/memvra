@@ -40,7 +40,7 @@ Examples:
 
 			dbPath := config.ProjectDBPath(root)
 			if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-				return fmt.Errorf("Memvra not initialized. Run `memvra init` first")
+				return fmt.Errorf("memvra not initialized. Run `memvra init` first")
 			}
 
 			database, err := db.Open(dbPath)

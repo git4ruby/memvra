@@ -174,7 +174,7 @@ func (s *Server) handleSearch(ctx context.Context, req mcp.CallToolRequest) (*mc
 			if label == "" {
 				label = c.FileID
 			}
-			sb.WriteString(fmt.Sprintf("### %s (lines %d-%d)\n```\n%s\n```\n\n", label, c.StartLine, c.EndLine, c.Content))
+			fmt.Fprintf(&sb, "### %s (lines %d-%d)\n```\n%s\n```\n\n", label, c.StartLine, c.EndLine, c.Content)
 		}
 	}
 
@@ -212,7 +212,7 @@ func (s *Server) handleProjectStatus(_ context.Context, _ mcp.CallToolRequest) (
 	sessionCount, _ := s.store.CountSessions()
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Project: %s\n", proj.Name))
+	fmt.Fprintf(&sb, "Project: %s\n", proj.Name)
 
 	stack := ts.Language
 	if ts.Framework != "" {
@@ -221,14 +221,14 @@ func (s *Server) handleProjectStatus(_ context.Context, _ mcp.CallToolRequest) (
 	if ts.Database != "" {
 		stack += " + " + ts.Database
 	}
-	sb.WriteString(fmt.Sprintf("Stack:   %s\n", stack))
-	sb.WriteString(fmt.Sprintf("Files:   %d indexed, %d chunks\n", proj.FileCount, proj.ChunkCount))
+	fmt.Fprintf(&sb, "Stack:   %s\n", stack)
+	fmt.Fprintf(&sb, "Files:   %d indexed, %d chunks\n", proj.FileCount, proj.ChunkCount)
 
 	totalMem := 0
 	for _, n := range memCounts {
 		totalMem += n
 	}
-	sb.WriteString(fmt.Sprintf("Memories: %d total", totalMem))
+	fmt.Fprintf(&sb, "Memories: %d total", totalMem)
 	if totalMem > 0 {
 		parts := []string{}
 		for _, t := range []memory.MemoryType{memory.TypeDecision, memory.TypeConvention, memory.TypeConstraint, memory.TypeNote, memory.TypeTodo} {
@@ -236,12 +236,12 @@ func (s *Server) handleProjectStatus(_ context.Context, _ mcp.CallToolRequest) (
 				parts = append(parts, fmt.Sprintf("%d %s", n, t))
 			}
 		}
-		sb.WriteString(fmt.Sprintf(" (%s)", strings.Join(parts, ", ")))
+		fmt.Fprintf(&sb, " (%s)", strings.Join(parts, ", "))
 	}
 	sb.WriteString("\n")
 
-	sb.WriteString(fmt.Sprintf("Sessions: %d\n", sessionCount))
-	sb.WriteString(fmt.Sprintf("Updated: %s\n", proj.UpdatedAt.Format("2006-01-02 15:04")))
+	fmt.Fprintf(&sb, "Sessions: %d\n", sessionCount)
+	fmt.Fprintf(&sb, "Updated: %s\n", proj.UpdatedAt.Format("2006-01-02 15:04"))
 
 	return mcp.NewToolResultText(sb.String()), nil
 }
@@ -259,8 +259,8 @@ func (s *Server) handleListMemories(_ context.Context, req mcp.CallToolRequest) 
 
 	var sb strings.Builder
 	for _, m := range memories {
-		sb.WriteString(fmt.Sprintf("[%s] %s\n  id: %s | source: %s | created: %s\n\n",
-			m.MemoryType, m.Content, m.ID, m.Source, m.CreatedAt.Format("2006-01-02 15:04")))
+		fmt.Fprintf(&sb, "[%s] %s\n  id: %s | source: %s | created: %s\n\n",
+			m.MemoryType, m.Content, m.ID, m.Source, m.CreatedAt.Format("2006-01-02 15:04"))
 	}
 	return mcp.NewToolResultText(sb.String()), nil
 }
@@ -280,10 +280,10 @@ func (s *Server) handleListSessions(_ context.Context, req mcp.CallToolRequest) 
 	// Reverse to chronological order (newest-first from DB → oldest-first for display).
 	for i := len(sessions) - 1; i >= 0; i-- {
 		sess := sessions[i]
-		sb.WriteString(fmt.Sprintf("[%s] (%s) %s\n",
-			sess.CreatedAt.Format("2006-01-02 15:04"), sess.ModelUsed, sess.Question))
+		fmt.Fprintf(&sb, "[%s] (%s) %s\n",
+			sess.CreatedAt.Format("2006-01-02 15:04"), sess.ModelUsed, sess.Question)
 		if sess.ResponseSummary != "" {
-			sb.WriteString(fmt.Sprintf("  → %s\n", sess.ResponseSummary))
+			fmt.Fprintf(&sb, "  → %s\n", sess.ResponseSummary)
 		}
 		sb.WriteString("\n")
 	}

@@ -67,7 +67,7 @@ Examples:
 					d, dbErr := db.Open(dbPath)
 					if dbErr == nil {
 						database = d
-						defer database.Close()
+						defer func() { _ = database.Close() }()
 						store = memory.NewStore(database)
 					}
 				}

@@ -378,7 +378,7 @@ func (s *Store) ListMemoriesSince(since time.Time) ([]Memory, error) {
 	if err != nil {
 		return nil, fmt.Errorf("store: list memories since: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanMemories(rows)
 }
 
@@ -395,7 +395,7 @@ func (s *Store) ListSessionsSince(since time.Time) ([]Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("store: list sessions since: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []Session
 	for rows.Next() {
@@ -496,7 +496,7 @@ func (s *Store) ListFiles() ([]File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("store: list files: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var files []File
 	for rows.Next() {
@@ -519,7 +519,7 @@ func (s *Store) ListChunksByFileID(fileID string) ([]Chunk, error) {
 	if err != nil {
 		return nil, fmt.Errorf("store: list chunks by file: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var chunks []Chunk
 	for rows.Next() {

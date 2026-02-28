@@ -40,7 +40,7 @@ Use --quiet to suppress output (useful for git hooks).`,
 			if err != nil {
 				return fmt.Errorf("open database: %w", err)
 			}
-			defer database.Close()
+			defer func() { _ = database.Close() }()
 
 			store := memory.NewStore(database)
 			vectors := memory.NewVectorStore(database)

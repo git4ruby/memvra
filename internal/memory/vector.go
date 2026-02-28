@@ -72,7 +72,7 @@ func (v *VectorStore) SearchChunks(query []float32, topK int, minSimilarity floa
 		// sqlite-vec may not be loaded; degrade gracefully.
 		return nil, nil //nolint:nilerr
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanMatches(rows, minSimilarity)
 }
 
@@ -90,7 +90,7 @@ func (v *VectorStore) SearchMemories(query []float32, topK int, minSimilarity fl
 	if err != nil {
 		return nil, nil //nolint:nilerr
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanMatches(rows, minSimilarity)
 }
 
